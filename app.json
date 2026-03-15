@@ -1,7 +1,8 @@
 {
   "expo": {
-    "name": "chat-app",
-    "slug": "chat-app",
+    "name": "My Chat App",
+    "slug": "my-chat-app-v1",
+    "scheme": "chat-app",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -21,10 +22,21 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
+      "package": "com.chat.app",
+      "statusBar": {
+        "barStyle": "dark-content",
+        "backgroundColor": "#ffffff",
+        "translucent": false
+      },
       "predictiveBackGestureEnabled": false
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "e6845a44-1d23-4fed-940f-6f1234a79ed8"
+      }
     }
   }
 }

@@ -1,20 +1,35 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import React, { useEffect } from 'react';
+import RootNavigator from './src/navigation/RootNavigator';
+import * as Linking from 'expo-linking';
+import { supabase } from './src/config/supabase';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 export default function App() {
+  useEffect(() => {
+    const handleDeepLink = (url: string | null) => {
+      if (!url) return;
+      const { queryParams } = Linking.parse(url);
+      if (queryParams) {
+        // Supabase-js handles session detection automatically if detectSessionInUrl is true
+      }
+    };
+
+    const subscription = Linking.addEventListener('url', (event: { url: string }) => {
+      handleDeepLink(event.url);
+    });
+
+    Linking.getInitialURL().then((url: string | null) => {
+      handleDeepLink(url);
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
+
   return (
-    <View style={styles.container}>
-      <Text>Open up App.tsx to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
+    <SafeAreaProvider>
+      <RootNavigator />
+    </SafeAreaProvider>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
