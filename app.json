@@ -39,7 +39,23 @@
       }
     },
     "plugins": [
-      "expo-sharing"
+      "expo-sharing",
+      [
+        "expo-av",
+        {
+          "microphonePermission": "Allow My Chat App to access your microphone for voice messages."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow My Chat App to access your photos to send images.",
+          "cameraPermission": "Allow My Chat App to access your camera to take photos."
+        }
+      ],
+      "expo-document-picker",
+      "expo-font",
+      "expo-asset"
     ]
   }
 }

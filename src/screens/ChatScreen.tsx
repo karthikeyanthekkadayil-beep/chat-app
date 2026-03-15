@@ -4,22 +4,33 @@ import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
-import { Audio } from 'expo-av';
-import { supabase } from '../config/supabase';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RouteProp } from '@react-navigation/native';
 import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet, Alert, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { supabase } from '../config/supabase';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RouteProp } from '@react-navigation/native';
+
+// Safe Audio import with type guards
+let Audio: any;
+try {
+  Audio = require('expo-av').Audio;
+} catch (e) {
+  Audio = null;
+}
 
 // --- Sub-Components to handle hooks correctly ---
 
 const AudioMessage = ({ currentMessage, position }: any) => {
   const [isPlaying, setIsPlaying] = useState(false);
-  const [sound, setSound] = useState<Audio.Sound | null>(null);
+  const [sound, setSound] = useState<any>(null);
 
   const playSound = async () => {
     try {
+      if (!Audio || !Audio.Sound) {
+        Alert.alert('Native Module Error', 'Audio support is not available in your current version of Expo Go.');
+        return;
+      }
       if (sound) {
         if (isPlaying) {
           await sound.pauseAsync();
@@ -38,7 +49,7 @@ const AudioMessage = ({ currentMessage, position }: any) => {
       setSound(newSound);
       setIsPlaying(true);
 
-      newSound.setOnPlaybackStatusUpdate((status) => {
+      newSound.setOnPlaybackStatusUpdate((status: any) => {
         if (status.isLoaded && !status.isPlaying && status.didJustFinish) {
           setIsPlaying(false);
         }
@@ -85,7 +96,7 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => {
   const [userId, setUserId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
-  const [recording, setRecording] = useState<Audio.Recording | null>(null);
+  const [recording, setRecording] = useState<any>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [text, setText] = useState('');
   
@@ -212,6 +223,10 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => {
 
   const startRecording = async () => {
     try {
+      if (!Audio || !Audio.Recording) {
+        Alert.alert('Native Module Error', 'Recording is not available in your current version of Expo Go. Please make sure you are using the latest Expo Go app.');
+        return;
+      }
       const { status } = await Audio.requestPermissionsAsync();
       if (status !== 'granted') return;
       await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
