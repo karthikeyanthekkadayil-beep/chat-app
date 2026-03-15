@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { GiftedChat, IMessage, Bubble, Send, InputToolbar, Actions } from 'react-native-gifted-chat';
 import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
+import { Audio } from 'expo-av';
 import { supabase } from '../config/supabase';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
@@ -18,6 +20,8 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => {
   const [userId, setUserId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [recording, setRecording] = useState<Audio.Recording | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
   const [text, setText] = useState('');
   const insets = useSafeAreaInsets();
   const { receiverId, receiverName, groupId, groupName } = (route.params as any) || {};
@@ -83,12 +87,15 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => {
           text: newMessage.text,
           createdAt: new Date(newMessage.created_at),
           image: newMessage.image_url,
+          audio: newMessage.audio_url,
+          file: newMessage.file_url,
+          fileName: newMessage.file_name,
           user: {
             _id: newMessage.user_id,
             name: newMessage.user_name || 'User',
             avatar: 'https://placeimg.com/140/140/any',
           },
-        };
+        } as any;
 
         setMessages(previousMessages => GiftedChat.append(previousMessages, [formattedMessage]));
       })
@@ -134,12 +141,15 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => {
         text: msg.text,
         createdAt: new Date(msg.created_at),
         image: msg.image_url,
+        audio: msg.audio_url,
+        file: msg.file_url,
+        fileName: msg.file_name,
         user: {
           _id: msg.user_id,
           name: msg.user_name || 'User',
           avatar: 'https://placeimg.com/140/140/any',
         },
-      }));
+      } as any));
       setMessages(formattedMessages);
     }
   };
@@ -158,6 +168,9 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => {
         receiver_id: isDM ? receiverId : null,
         group_id: isGroup ? groupId : null,
         image_url: message.image || null,
+        audio_url: (message as any).audio || null,
+        file_url: (message as any).file || null,
+        file_name: (message as any).fileName || null,
       },
     ]);
 
@@ -247,12 +260,117 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => {
 
   const renderSend = (props: any) => {
     return (
-      <Send {...props}>
-        <View style={{ marginRight: 10, marginBottom: 5 }}>
-          <Ionicons name="send" size={28} color="#f57c00" />
-        </View>
-      </Send>
+      <View style={{ flexDirection: 'row', alignItems: 'center', height: 44 }}>
+        <TouchableOpacity 
+          onPressIn={startRecording} 
+          onPressOut={stopRecording}
+          style={{ marginRight: 10, marginBottom: 5 }}
+        >
+          <Ionicons name={isRecording ? "mic" : "mic-outline"} size={28} color={isRecording ? "#ff5252" : "#f57c00"} />
+        </TouchableOpacity>
+        <Send {...props}>
+          <View style={{ marginRight: 10, marginBottom: 5 }}>
+            <Ionicons name="send" size={28} color="#f57c00" />
+          </View>
+        </Send>
+      </View>
     );
+  };
+
+  const renderMessageAudio = (props: any) => {
+    const { currentMessage } = props;
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [sound, setSound] = useState<Audio.Sound | null>(null);
+
+    const playSound = async () => {
+      try {
+        if (sound) {
+          if (isPlaying) {
+            await sound.pauseAsync();
+            setIsPlaying(false);
+          } else {
+            await sound.playAsync();
+            setIsPlaying(true);
+          }
+          return;
+        }
+
+        const { sound: newSound } = await Audio.Sound.createAsync(
+          { uri: currentMessage.audio },
+          { shouldPlay: true }
+        );
+        setSound(newSound);
+        setIsPlaying(true);
+
+        newSound.setOnPlaybackStatusUpdate((status) => {
+          if (status.isLoaded && !status.isPlaying && status.didJustFinish) {
+            setIsPlaying(false);
+          }
+        });
+      } catch (err) {
+        console.error('Play sound error', err);
+      }
+    };
+
+    return (
+      <TouchableOpacity 
+        onPress={playSound}
+        style={{ 
+          flexDirection: 'row', 
+          alignItems: 'center', 
+          padding: 10,
+          backgroundColor: props.position === 'right' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.05)',
+          borderRadius: 20,
+          margin: 5
+        }}
+      >
+        <Ionicons 
+          name={isPlaying ? "pause-circle" : "play-circle"} 
+          size={32} 
+          color={props.position === 'right' ? "#fff" : "#f57c00"} 
+        />
+        <Text style={{ 
+          marginLeft: 5, 
+          color: props.position === 'right' ? "#fff" : "#333",
+          fontWeight: '500'
+        }}>
+          Voice Message
+        </Text>
+      </TouchableOpacity>
+    );
+  };
+
+  const renderCustomView = (props: any) => {
+    const { currentMessage } = props;
+    if (currentMessage.file) {
+      return (
+        <TouchableOpacity 
+          style={{ 
+            flexDirection: 'row', 
+            alignItems: 'center', 
+            padding: 10,
+            backgroundColor: props.position === 'right' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.05)',
+            borderRadius: 10,
+            margin: 5
+          }}
+          onPress={() => Alert.alert('Download', `Downloading ${currentMessage.fileName || 'file'}...`)}
+        >
+          <Ionicons 
+            name="document-attach-outline" 
+            size={24} 
+            color={props.position === 'right' ? "#fff" : "#f57c00"} 
+          />
+          <Text style={{ 
+            marginLeft: 8, 
+            color: props.position === 'right' ? "#fff" : "#333",
+            flexShrink: 1
+          }}>
+            {currentMessage.fileName || 'Document'}
+          </Text>
+        </TouchableOpacity>
+      );
+    }
+    return null;
   };
 
   const renderInputToolbar = (props: any) => {
@@ -323,15 +441,111 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => {
     }
   };
 
+  const startRecording = async () => {
+    try {
+      const { status } = await Audio.requestPermissionsAsync();
+      if (status !== 'granted') return;
+
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+      });
+
+      const { recording } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY
+      );
+      setRecording(recording);
+      setIsRecording(true);
+    } catch (err) {
+      console.error('Failed to start recording', err);
+    }
+  };
+
+  const stopRecording = async () => {
+    if (!recording) return;
+    setIsRecording(false);
+    await recording.stopAndUnloadAsync();
+    const uri = recording.getURI();
+    setRecording(null);
+    if (uri) uploadAudio(uri);
+  };
+
+  const uploadAudio = async (uri: string) => {
+    setUploading(true);
+    try {
+      const response = await fetch(uri);
+      const blob = await response.blob();
+      const fileName = `audio_${Date.now()}.m4a`;
+      const filePath = `${userId}/${fileName}`;
+
+      const { error } = await supabase.storage.from('chat-images').upload(filePath, blob);
+      if (error) throw error;
+
+      const { data: { publicUrl } } = supabase.storage.from('chat-images').getPublicUrl(filePath);
+
+      onSend([{
+        _id: Math.random().toString(),
+        text: '',
+        createdAt: new Date(),
+        user: { _id: userId || '' },
+        audio: publicUrl,
+      } as any]);
+    } catch (err: any) {
+      alert('Error uploading audio: ' + err.message);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const pickDocument = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({});
+      if (!result.canceled) {
+        uploadFile(result.assets[0].uri, result.assets[0].name);
+      }
+    } catch (err) {
+      console.error('Pick document error', err);
+    }
+  };
+
+  const uploadFile = async (uri: string, name: string) => {
+    setUploading(true);
+    try {
+      const response = await fetch(uri);
+      const blob = await response.blob();
+      const filePath = `${userId}/${Date.now()}_${name}`;
+
+      const { error } = await supabase.storage.from('chat-images').upload(filePath, blob);
+      if (error) throw error;
+
+      const { data: { publicUrl } } = supabase.storage.from('chat-images').getPublicUrl(filePath);
+
+      onSend([{
+        _id: Math.random().toString(),
+        text: `File: ${name}`,
+        createdAt: new Date(),
+        user: { _id: userId || '' },
+        file: publicUrl,
+        fileName: name,
+      } as any]);
+    } catch (err: any) {
+      alert('Error uploading file: ' + err.message);
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const renderActions = (props: any) => {
     return (
       <Actions
         {...props}
         options={{
           ['Send Image']: pickImage,
+          ['Send File']: pickDocument,
+          ['Cancel']: () => {},
         }}
         icon={() => (
-          <Ionicons name="camera" size={28} color="#f57c00" />
+          <Ionicons name="add-circle-outline" size={28} color="#f57c00" />
         )}
       />
     );
@@ -384,6 +598,8 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ navigation, route }) => {
           )}
           renderActions={renderActions}
           renderChatEmpty={renderChatEmpty}
+          renderMessageAudio={renderMessageAudio}
+          renderCustomView={renderCustomView}
         />
       </KeyboardAvoidingView>
       {uploading && (

@@ -103,6 +103,20 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
 
         <TouchableOpacity 
           style={styles.chatCard} 
+          onPress={() => navigation.navigate('Groups')}
+        >
+          <View style={[styles.chatCardIcon, { backgroundColor: '#9c27b0' }]}>
+            <Ionicons name="chatbubble-ellipses" size={32} color="#fff" />
+          </View>
+          <View style={styles.chatCardInfo}>
+            <Text style={styles.chatCardTitle}>Group Chats</Text>
+            <Text style={styles.chatCardSubtitle}>View and manage your groups</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={24} color="#ccc" />
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={styles.chatCard} 
           onPress={() => navigation.navigate('CreateGroup')}
         >
           <View style={[styles.chatCardIcon, { backgroundColor: '#5bc0de' }]}>

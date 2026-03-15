@@ -11,6 +11,7 @@ import HomeScreen from '../screens/HomeScreen';
 import ChatScreen from '../screens/ChatScreen';
 import UsersScreen from '../screens/UsersScreen';
 import CreateGroupScreen from '../screens/CreateGroupScreen';
+import GroupsScreen from '../screens/GroupsScreen';
 
 const Stack = createNativeStackNavigator();
 const AuthStack = createNativeStackNavigator();
@@ -41,6 +42,7 @@ function MainNavigator() {
       <Stack.Screen name="Chat" component={ChatScreen} />
       <Stack.Screen name="Users" component={UsersScreen} options={{ title: 'Select User' }} />
       <Stack.Screen name="CreateGroup" component={CreateGroupScreen} options={{ title: 'Create Group' }} />
+      <Stack.Screen name="Groups" component={GroupsScreen} options={{ title: 'My Groups' }} />
     </Stack.Navigator>
   );
 }
